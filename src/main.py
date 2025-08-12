@@ -105,7 +105,7 @@ def reward_function(normalized_state_errors, action_increment, weights, logistic
     Calcula a recompensa com base nos erros normalizados, parâmetros logísticos e esforço de controle.
     """
     R0 = sum(weights[var]['value'] * abs(error) for var, error in normalized_state_errors.items())
-    sum_vals = sum([weights[var]['value'] for var in weights.keys()])
+    sum_vals = sum(weights[var]['value'] for var in weights.keys())
     R0 = (sum_vals - R0) / sum_vals  # Normaliza entre 0 e 1
 
     A, B, C, D = (
@@ -121,8 +121,7 @@ def reward_function(normalized_state_errors, action_increment, weights, logistic
     a_ub, Vmax = action_bonus_params["a_ub"]['value'], action_bonus_params["Vmax"]['value']
     action_ratio = min(abs(action_increment) / a_ub, 1)
     V = Vmax * (1 - action_ratio)
-    Rf = R1 + V
-    return Rf
+    return R1 + V
 
 
 config = {

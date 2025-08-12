@@ -20,11 +20,12 @@ import time
 
 
 def define_model(config, key, render, n_evals, total_timesteps, id_):
-    best_model_path = cwd + f"/models_/best_model_ferm_{id_}_{key}_"
+    best_model_path = f"{cwd}/models_/best_model_ferm_{id_}_{key}_"
 
     env = Monitor(ProcessSimulatorEnv(config), filename=best_model_path + "/train_monitor.csv")
     sigma_std = config["ddpg_params"]["exploration"]["normal_noise"]["value"]
-    action_noise = NormalActionNoise(mean=np.zeros(1), sigma=sigma_std * np.ones(1))
+    action_dim = env.action_space.shape[0]
+    action_noise = NormalActionNoise(mean=np.zeros(action_dim), sigma=sigma_std * np.ones(action_dim))
     batch_size = config["ddpg_params"]["sample_data"]["batch_size"]["value"]
     ep_length = config["constants"]["max_steps"]
     lr_start = config["ddpg_params"]["base"]["lr"]["value"]
@@ -68,7 +69,7 @@ def define_model(config, key, render, n_evals, total_timesteps, id_):
 
 
 def evaluate_params(model, eval_callback, total_timesteps, timesteps, env, config, key, render, n_evals, id_):
-    best_model_path = cwd + f"/models_/best_model_ferm_{id_}_{key}_"
+    best_model_path = f"{cwd}/models_/best_model_ferm_{id_}_{key}_"
     timeout_callback = TimeoutCallback(max_duration_seconds=5 * 60 * 60, verbose=1)
     callback = CallbackList([eval_callback, timeout_callback])
     model.learn(total_timesteps=timesteps, callback=callback, reset_num_timesteps=False)
@@ -77,7 +78,7 @@ def evaluate_params(model, eval_callback, total_timesteps, timesteps, env, confi
     print('--------------', best_model_path)
 
     metrics = initialize_zeroed_metrics(config)
-    for trials_ in range(n_evals):
+    for _ in range(n_evals):
         partial_metrics = eval_render(best_model_path, config, render=render)
         # print(partial_metrics)
         metrics = sum_dicts(metrics, partial_metrics, n_evals)
@@ -93,18 +94,20 @@ def objective(trial, config, run_type, n_evals, n_agents):
                 # Criação da variável dinamicamente com base no nome da chave
                 suggested_value = trial.suggest_float(param_name, param_info["min"], param_info["max"])
                 config[run_type][param_type][param_name]["value"] = suggested_value
-            if param_info["type"] == "int":
+            elif param_info["type"] == "int":
                 # Criação da variável dinamicamente com base no nome da chave
                 suggested_value = trial.suggest_int(param_name, param_info["min"], param_info["max"])
                 config[run_type][param_type][param_name]["value"] = suggested_value
-            if param_info["type"] == "categorical":
+            elif param_info["type"] == "categorical":
                 # Criação da variável dinamicamente com base no nome da chave
                 suggested_value = trial.suggest_categorical(param_name, param_info["categories"])
                 config[run_type][param_type][param_name]["value"] = suggested_value
-            if param_info["type"] == "log":
+            elif param_info["type"] == "log":
                 # Criação da variável dinamicamente com base no nome da chave
                 suggested_value = trial.suggest_float(param_name, param_info["min"], param_info["max"], log=True)
                 config[run_type][param_type][param_name]["value"] = suggested_value
+            else:
+                raise ValueError("Miss parameter type")
 
     keys = run_type
     for dict_ in config[run_type]:
@@ -171,10 +174,10 @@ def objective(trial, config, run_type, n_evals, n_agents):
     trial.set_user_attr("IAE", np.mean(IAEs))
     trial.set_user_attr("sumA", np.mean(sumAs))
     trial.set_user_attr("best_mean_reward", np.mean(rws))
-    if run_type == "reward_params":
-        return np.mean(IAEs)
-    else:
-        return np.mean(rws)
+
+    return np.mean(IAEs) if run_type == "reward_params" else np.mean(rws)
+
+
 
 
 def run_optuna_study_rw_fun(storage, study_name, n_trials, config, n_evals, n_agents):
@@ -197,18 +200,6 @@ def run_optuna_study_rw_fun(storage, study_name, n_trials, config, n_evals, n_ag
         sampler=sampler,
         pruner=pruner
     )
-
-    # Callback para atualizar os gráficos após cada trial
-    def plot_callback(study, trial):
-        os.system('clear' if os.name == 'posix' else 'cls')  # Limpa o terminal para atualizar os gráficos
-
-        # Plot do Pareto Front
-        fig = optuna.visualization.plot_slice(study, target_name='IAE')
-        fig.show()
-
-        # Mostrar as últimas 5 trials concluídas
-        trials_df = study.trials_dataframe().sort_values(by="datetime_complete", ascending=False).head(5)
-        display(trials_df)
 
     # Executar o estudo com o callback
     study.optimize(lambda trial: objective(trial, config, "reward_params", n_evals, n_agents), n_trials=n_trials)
@@ -237,18 +228,6 @@ def run_optuna_study_nn_arch(storage, study_name, n_trials, config, n_evals, n_a
         pruner=pruner
     )
 
-    # Callback para atualizar os gráficos após cada trial
-    def plot_callback(study, trial):
-        os.system('clear' if os.name == 'posix' else 'cls')  # Limpa o terminal para atualizar os gráficos
-
-        # Plot do Pareto Front
-        fig = optuna.visualization.plot_slice(study, target_name='sum RW')
-        fig.show()
-
-        # Mostrar as últimas 5 trials concluídas
-        trials_df = study.trials_dataframe().sort_values(by="datetime_complete", ascending=False).head(5)
-        display(trials_df)
-
     # Executar o estudo com o callback
     study.optimize(lambda trial: objective(trial, config, "nn_arch_params", n_evals, n_agents), n_trials=n_trials)
 
@@ -275,18 +254,6 @@ def run_optuna_study_ddpg(storage, study_name, n_trials, config, n_evals, n_agen
         sampler=sampler,
         pruner=pruner
     )
-
-    # Callback para atualizar os gráficos após cada trial
-    def plot_callback(study, trial):
-        os.system('clear' if os.name == 'posix' else 'cls')  # Limpa o terminal para atualizar os gráficos
-
-        # Plot do Pareto Front
-        fig = optuna.visualization.plot_slice(study, target_name='sum RW')
-        fig.show()
-
-        # Mostrar as últimas 5 trials concluídas
-        trials_df = study.trials_dataframe().sort_values(by="datetime_complete", ascending=False).head(5)
-        display(trials_df)
 
     # Executar o estudo com o callback
     study.optimize(lambda trial: objective(trial, config, "ddpg_params", n_evals, n_agents), n_trials=n_trials)

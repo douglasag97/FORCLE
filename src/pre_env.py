@@ -16,7 +16,7 @@ class ProcessSimulatorEnv(gym.Env):
     def __init__(self, config):
         super(ProcessSimulatorEnv, self).__init__()
         self.constants = config["constants"]
-        self.ode_solver = config["ode_solver"]
+        self.ode_solver = config.get("ode_solver", "RK45")
         self.reset_params = config["reset_params"]
         self.action_params = config["action_params"]
         self.state_params = config["state_params"]
@@ -70,7 +70,7 @@ class ProcessSimulatorEnv(gym.Env):
             if params.get("type") == "controlled_var":
                 max_positive_error = params["max"] - self.setpoints[key]
                 max_negative_error = self.setpoints[key] - params["min"]
-                max_error = max(max_positive_error, max_negative_error)
+                max_error = max(max(max_positive_error, max_negative_error),1e-6)
                 self.state[key] = normalize(
                     self.state[key] - self.setpoints[key], -max_error, max_error
                 )

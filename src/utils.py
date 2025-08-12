@@ -80,15 +80,12 @@ def initialize_zeroed_metrics(config):
         key: 0 for key in config["action_params"].keys()
     }
 
-    # Dicionário final
-    metrics = {
+    return {
         "IAE_per_variable": iae_per_variable,
         "IAE_total": 0,
         "sum_actions_dict": sum_actions_dict,
         "sum_actions": 0,
     }
-
-    return metrics
 
 
 class TimeoutCallback(BaseCallback):
