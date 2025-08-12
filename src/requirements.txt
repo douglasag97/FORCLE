@@ -1,0 +1,9 @@
+torch==2.2.1+cu118
+boto3
+sagemaker
+optuna==3.6.1
+stable-baselines3==2.0.0
+matplotlib
+pymysql
+numpy
+scipy==1.10.1
