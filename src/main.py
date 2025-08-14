@@ -11,6 +11,31 @@ warnings.filterwarnings("ignore")
 
 
 def differential_equations(t, y, constants, actions, adaptive_vars):
+    """
+    Compute time derivatives for the 7-state reactor model.
+    
+    This function evaluates the reactor's differential equations at time t for state vector y = [h, cX, cP, cS, cO2, T, Tag]. It enforces non-negativity on states, computes ionic/solubility terms, oxygen transfer and uptake, Arrhenius-like growth kinetics, and returns the time derivatives corresponding to the states.
+    
+    Parameters:
+        t (float): Current simulation time (unused in the expressions but kept for ODE solver compatibility).
+        y (sequence[float]): State vector [h, cX, cP, cS, cO2, T, Tag]:
+            - h: liquid height (m)
+            - cX: biomass concentration
+            - cP: product concentration
+            - cS: substrate concentration
+            - cO2: dissolved oxygen concentration
+            - T: reactor temperature (°C)
+            - Tag: aggregate/ambient temperature (°C)
+        constants (dict): Model constants and parameters required by the equations (e.g., Ab, Kla0, miu_O2, YO2, KO2, A1, Ea1, A2, Ea2, R, Ks, Kp, miu_P, Ks1, Kp1, Rsx, Rsp, deltaH, ro, ccal, KT, AT, Vm, Tiag, roag, ccalag, and ionic/mass parameters).
+        actions (dict): Actuator values with keys:
+            - "faq": air/gas flow (Fag)
+            - "Fi": inlet flow
+            - "Fe": outlet flow
+        adaptive_vars (dict): Time-varying external inputs; must include "T_in" (inlet temperature, °C).
+    
+    Returns:
+        list[float]: Time derivatives [dh, dcX, dcP, dcS, dcO2, dT, dTag] in the same order as the input state vector.
+    """
     y = [max(i, 0) for i in y]  # garantir que todos os estados sejam não-negativos
 
     h, cX, cP, cS, cO2, T, Tag = y
@@ -93,7 +118,15 @@ def differential_equations(t, y, constants, actions, adaptive_vars):
 
 def algebraic_equations(vars_pvi, constants, actions, state):
     """
-    Atualiza o estado observável do processo.
+    Copy observable variables from a prediction/measurement dict into the mutable process state.
+    
+    This function updates the provided state mapping in place by setting state["T"], state["h"], and state["cP"] to the corresponding values from vars_pvi. The function does not return a value.
+    
+    Parameters:
+        vars_pvi (Mapping): Source mapping containing keys "T", "h", and "cP".
+        constants: Unused in this update (kept for API compatibility).
+        actions: Unused in this update (kept for API compatibility).
+        state (MutableMapping): Mutable state mapping that will be modified in place.
     """
     state["T"] = vars_pvi["T"]
     state["h"] = vars_pvi["h"]
@@ -102,7 +135,27 @@ def algebraic_equations(vars_pvi, constants, actions, state):
 
 def reward_function(normalized_state_errors, action_increment, weights, logistic_params, action_bonus_params):
     """
-    Calcula a recompensa com base nos erros normalizados, parâmetros logísticos e esforço de controle.
+    Compute a scalar reward from normalized state errors and control action change.
+    
+    The reward is the sum of two terms:
+    1. A normalized error-based term computed as a weighted complement of the absolute normalized errors,
+       transformed by a logistic-like function parameterized by A, B, C, D.
+    2. An action-effort bonus that penalizes large action increments by scaling down a maximum bonus Vmax
+       based on the relative magnitude of action_increment with respect to a_ub.
+    
+    Parameters:
+        normalized_state_errors (dict): Mapping from state variable name to its normalized error (float).
+        action_increment (float): Scalar change in the control action since the previous step.
+        weights (dict): Mapping from state variable name to a dict containing a numeric 'value' weight.
+        logistic_params (dict): Dict with entries "A","B","C","D", each containing a numeric 'value'
+            used to form the logistic transformation.
+        action_bonus_params (dict): Dict containing 'a_ub' (action upper bound) and 'Vmax' (maximum bonus),
+            each under a 'value' key.
+    
+    Returns:
+        float: Combined reward (error-transformed value plus action-effort bonus). The error term is
+        normalized to [0,1] before logistic transformation; the action bonus is clamped so a large
+        action_increment reduces the bonus down to zero.
     """
     R0 = sum(weights[var]['value'] * abs(error) for var, error in normalized_state_errors.items())
     sum_vals = sum(weights[var]['value'] for var in weights.keys())
@@ -304,6 +357,23 @@ config = {
 
 
 def run_worker(worker_id, storage_url, study_name, trials_per_worker, config, n_evals, n_agents):
+    """
+    Run a worker process that executes a subset of Optuna DDPG trials.
+    
+    Starts a single worker that invokes run_optuna_study_ddpg for the specified number of trials and prints simple start/finish messages.
+    
+    Parameters:
+        worker_id (int): Identifier for the worker (used in log messages).
+        storage_url (str): Optuna storage URL where the study is persisted.
+        study_name (str): Name of the Optuna study to run.
+        trials_per_worker (int): Number of trial evaluations this worker should run.
+        config (dict): Configuration dictionary passed to the optimization routine.
+        n_evals (int): Number of environment evaluations per trial (evaluation episodes).
+        n_agents (int): Number of agents used within each trial (DDPG ensemble/parallelism).
+    
+    Returns:
+        None
+    """
     print(f"🔧 [Worker {worker_id}] Iniciando {trials_per_worker} trials")
     run_optuna_study_ddpg(
         storage=storage_url,
