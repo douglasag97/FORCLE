@@ -1,11 +1,10 @@
 import argparse
-import argparse
 import multiprocessing
 import warnings
 
 import numpy as np
 
-from optimization import run_optuna_study_ddpg
+from optimization import run_optuna_study_ddpg, run_optuna_study_rw_fun, run_optuna_study_nn_arch
 
 warnings.filterwarnings("ignore")
 
@@ -104,8 +103,9 @@ def reward_function(normalized_state_errors, action_increment, weights, logistic
     """
     Calcula a recompensa com base nos erros normalizados, parâmetros logísticos e esforço de controle.
     """
-    R0 = sum(weights[var]['value'] * abs(error) for var, error in normalized_state_errors.items())
-    sum_vals = sum(weights[var]['value'] for var in weights.keys())
+    R0 = sum(weights[var]["value"] * abs(error) for var, error in normalized_state_errors.items())
+    sum_vals = sum(w["value"] for w in weights.values())
+    sum_vals = sum_vals if sum_vals > 0 else 1e-6
     R0 = (sum_vals - R0) / sum_vals  # Normaliza entre 0 e 1
 
     A, B, C, D = (
@@ -340,17 +340,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Divide os trials entre os workers
-    trials_per_worker = args.n_trials // args.n_workers
-
+    base, rem = divmod(args.n_trials, args.n_workers)
+    trials_for_workers = [base + (1 if i < rem else 0) for i in range(args.n_workers)]
     processes = []
-
-    for i in range(args.n_workers):
+    for i, n_trials_worker in enumerate(trials_for_workers):
+        if n_trials_worker <= 0:
+            continue
         p = multiprocessing.Process(
             target=run_worker,
-            args=(i, args.storage, args.study_name, trials_per_worker, config, args.n_evals, args.n_agents)
+            args=(i, args.storage, args.study_name, n_trials_worker, config, args.n_evals, args.n_agents),
         )
         p.start()
         processes.append(p)
-
-    for p in processes:
-        p.join()

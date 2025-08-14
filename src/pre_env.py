@@ -32,7 +32,7 @@ class ProcessSimulatorEnv(gym.Env):
             low=-1, high=1, shape=(len(self.state_params),), dtype=np.float32
         )
         self.adaptive_vars = {}
-        self.last_max_action = 0
+        self.last_max_action_norm = 0
         self.reset()
 
     def reset(self, seed=None, options=None, fixed_values=None):
@@ -99,7 +99,7 @@ class ProcessSimulatorEnv(gym.Env):
                 self.action_params[key]["max"]
             )
 
-        self.last_max_action = max(abs(inc) for inc in action)
+        self.last_max_action_norm = max(abs(inc) for inc in action)
 
         sol = solve_ivp(
             self._differential_equations_wrapper,
@@ -120,7 +120,7 @@ class ProcessSimulatorEnv(gym.Env):
             if params.get("type", "controlled_var") == "controlled_var":
                 max_positive_error = params["max"] - self.setpoints[key]
                 max_negative_error = self.setpoints[key] - params["min"]
-                max_error = max(max_positive_error, max_negative_error)
+                max_error = max(max(max_positive_error, max_negative_error), 1e-6)
                 self.state[key] = normalize(
                     self.state[key] - self.setpoints[key], -max_error, max_error
                 )
@@ -138,7 +138,7 @@ class ProcessSimulatorEnv(gym.Env):
 
         reward = self.reward_function(
             normalized_state_errors,
-            self.last_max_action,
+            self.last_max_action_norm,
             self.reward_params["weights"],
             self.reward_params["logistic_params"],
             self.reward_params["action_bonus_params"]

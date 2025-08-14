@@ -32,7 +32,7 @@ def generate_nn_topology(total_neurons, num_layers, distribution):
         layers = np.full(num_layers, total_neurons // num_layers, dtype=int)
         layers[:total_neurons % num_layers] += 1
     else:
-        raise ValueError("Distribuição inválida. Escolha entre 'exponential''random', ou 'gaussian'.")
+        raise ValueError("Distribuição inválida. Escolha entre 'exponential', 'random', ou 'gaussian'.")
 
     # Ajuste para garantir que a soma dos neurônios seja correta
     layers[-1] += total_neurons - np.sum(layers)
@@ -51,7 +51,7 @@ def sum_dicts(d1, d2, n_evals):
                 result[key] = sum_dicts(d1[key], d2[key], n_evals)
             else:
                 # Caso contrário, somar os valores diretamente
-                result[key] = d1[key] + d2[key] / n_evals
+                result[key] = (d1[key] + d2[key]) / n_evals
         elif key in d1:
             result[key] = d1[key]
         else:

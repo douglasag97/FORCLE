@@ -152,13 +152,10 @@ class EvaluationEnvRunner:
         plt.legend()
         plt.tight_layout()
         plt.show()
-
+"""
     def _plot_results_ferm_independent(self, result, variable, show_reward=False, ma_window=4):
         import plotly.graph_objs as go
         import numpy as np
-
-        def moving_average(data, window_size):
-            return np.convolve(data, np.ones(window_size) / window_size, mode='valid')
 
         state_history = result["states"]
         action_history = result["actions"]
@@ -409,3 +406,4 @@ class EvaluationEnvRunner:
             y_offset += img.height
 
         combined.save(variable + "all_plots_together.png")
+"""

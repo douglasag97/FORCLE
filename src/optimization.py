@@ -14,15 +14,16 @@ from eval_render import eval_render
 from pre_env import ProcessSimulatorEnv
 from utils import TimeoutCallback
 from utils import sum_dicts, initialize_zeroed_metrics, generate_nn_topology
-
+import torch
 cwd = os.getcwd()
 import time
 
 
 def define_model(config, key, render, n_evals, total_timesteps, id_):
     best_model_path = f"{cwd}/models_/best_model_ferm_{id_}_{key}_"
+    os.makedirs(best_model_path, exist_ok=True)
 
-    env = Monitor(ProcessSimulatorEnv(config), filename=best_model_path + "/train_monitor.csv")
+    env = Monitor(ProcessSimulatorEnv(config), filename=f"{best_model_path}/train_monitor.csv")
     sigma_std = config["ddpg_params"]["exploration"]["normal_noise"]["value"]
     action_dim = env.action_space.shape[0]
     action_noise = NormalActionNoise(mean=np.zeros(action_dim), sigma=sigma_std * np.ones(action_dim))
@@ -54,7 +55,7 @@ def define_model(config, key, render, n_evals, total_timesteps, id_):
                 # Arquitetura do crítico (mais robusto)
             }
         },
-        device="cuda",
+        device="cuda" if torch.cuda.is_available() else "cpu",
     )
 
     eval_callback = EvalCallback(
@@ -68,7 +69,7 @@ def define_model(config, key, render, n_evals, total_timesteps, id_):
     return model, env, eval_callback
 
 
-def evaluate_params(model, eval_callback, total_timesteps, timesteps, env, config, key, render, n_evals, id_):
+def evaluate_params(model, eval_callback, timesteps, config, key, render, n_evals, id_):
     best_model_path = f"{cwd}/models_/best_model_ferm_{id_}_{key}_"
     timeout_callback = TimeoutCallback(max_duration_seconds=5 * 60 * 60, verbose=1)
     callback = CallbackList([eval_callback, timeout_callback])
@@ -118,7 +119,11 @@ def objective(trial, config, run_type, n_evals, n_agents):
                 keys = keys + "_" + str(round(i["value"], 2))
     # Treinamento total e blocos
     total_timesteps = 150000
-    steps_per_block = [int(total_timesteps / 4), int(total_timesteps / 4), int(total_timesteps / 2)]
+    steps_per_block = [
+        int(total_timesteps / 4),
+        int(total_timesteps / 4),
+        int(total_timesteps / 2)
+    ]
     models = []
     callbacks = []
     for k in range(n_agents):
@@ -135,10 +140,8 @@ def objective(trial, config, run_type, n_evals, n_agents):
             start = time.perf_counter()
             [best_mean_reward, IAE, sumA, updated_model, updated_callback] = evaluate_params(models[k],
                                                                                              callbacks[k],
-                                                                                             total_timesteps=total_timesteps,
                                                                                              timesteps=steps_per_block[
                                                                                                  block],
-                                                                                             env=env,
                                                                                              config=config,
                                                                                              key=keys + f"__{k}",
                                                                                              render=False,
