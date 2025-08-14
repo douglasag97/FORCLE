@@ -10,16 +10,43 @@ from pre_env import ProcessSimulatorEnv
 
 
 def moving_average(data, window_size):
+    """
+    Compute the simple (uniform) moving average of a 1-D numeric sequence.
+    
+    Returns the moving average using a uniform window of size `window_size`. The result length is len(data) - window_size + 1 (NumPy 'valid' convolution mode), so no padding is applied and only fully overlapping windows are returned.
+    
+    Parameters:
+        data (array-like): 1-D sequence of numeric values.
+        window_size (int): Size of the moving window (must be >= 1 and <= len(data)).
+    
+    Returns:
+        numpy.ndarray: Array of moving-average values with length len(data) - window_size + 1.
+    """
     return np.convolve(data, np.ones(window_size) / window_size, mode='valid')
 
 
 class EvaluationEnvRunner:
     def __init__(self, config, model_dir):
+        """
+        Initialize the runner with configuration and model directory.
+        
+        Parameters:
+            config (dict): Evaluation and environment configuration; must contain ['constants']['max_steps'].
+            model_dir (str): Path to the directory containing the trained model (expects 'best_model.zip').
+        
+        Side effects:
+            Stores config and model_dir on the instance and sets self.max_steps from config['constants']['max_steps'].
+        """
         self.config = config
         self.model_dir = model_dir
         self.max_steps = config["constants"]["max_steps"]
 
     def run_evaluations(self):
+        """
+        Run evaluations for all state parameters marked for evaluation and produce plots.
+        
+        Iterates over entries in self.config["state_params"] and, for each parameter that contains an "in_eval" key, executes a single-series evaluation via _run_single_simulation and then visualizes the result using _plot_results_ferm_independent (with a moving-average window of 4). This method prints a short progress message for each evaluated variable and triggers plotting/exporting of figures. Results are collected locally during execution but not returned.
+        """
         results = {}
         for var, params in self.config["state_params"].items():
             if "in_eval" in params:
@@ -29,6 +56,21 @@ class EvaluationEnvRunner:
                 self._plot_results_ferm_independent(results[var], var, ma_window=4)
 
     def _run_single_simulation(self, variable, eval_values):
+        """
+        Run a sequence of simulations varying a single environment variable and collect states, actions, and rewards.
+        
+        The method loads the trained DDPG model from self.model_dir, initializes the ProcessSimulatorEnv with fixed values for all non-target parameters, and then iterates through the provided eval_values for the target variable. For the first eval value the simulator runs for self.max_steps * 2 steps; subsequent values run for self.max_steps steps. At each environment step the agent policy is queried deterministically and the environment is advanced. Collected state histories are denormalized before being returned.
+        
+        Parameters:
+            variable (str): Name of the state variable to evaluate (must be present in self.config["state_params"]).
+            eval_values (Iterable[float]): Sequence of values to set for the target variable; the first value is used when resetting the environment and each value is applied in turn during the run.
+        
+        Returns:
+            dict: A dictionary with keys:
+                - "states" (dict[str, list[float]]): Denormalized time series for each state variable.
+                - "actions" (dict[str, list[float]]): Recorded action values per step for each action channel (still in their raw form).
+                - "rewards" (list[float]): Reward received at each environment step.
+        """
         model = DDPG.load(self.model_dir + "/best_model.zip")
         state_params = self.config["state_params"]
 
@@ -89,6 +131,26 @@ class EvaluationEnvRunner:
         }
 
     def _denormalize_states(self, states, state_params, variable, eval_values, max_steps_):
+        """
+        Denormalize recorded state histories from normalized values back to physical units.
+        
+        For each state in `states`, converts the sequence of normalized values into real-world units using metadata in `state_params`.
+        - Controlled variables ("controlled_var"):
+          - If the state is the evaluated `variable`, `eval_values` defines sequential setpoints; the first interval uses a duration of 2 * `max_steps_`, subsequent intervals use `max_steps_`. Each segment is denormalized as: real = normalized * max_error + setpoint, where max_error = max(max - setpoint, setpoint - min).
+          - For other controlled variables, the first `in_eval` value from `state_params` is used as a fixed setpoint for denormalization with the same formula.
+        - Adaptive variables ("adaptive_var"):
+          - Denormalized with linear scaling from normalized space to [min, max] using: real = ((v + 1) / 2) * (max - min) + min.
+        
+        Parameters:
+            states (dict[str, list[float]]): Mapping from state keys to lists of normalized values collected during simulation.
+            state_params (dict): Metadata for each state key; expected keys include "type", "min", "max", and for controlled variables optionally "in_eval".
+            variable (str): The state key currently being evaluated (whose setpoints vary over `eval_values`).
+            eval_values (Sequence[float]): Sequence of setpoint values used during the evaluation of `variable`.
+            max_steps_ (int): Base number of steps per evaluation interval (the first interval is doubled).
+        
+        Returns:
+            dict[str, list[float]]: Mapping from state keys to denormalized value sequences in their original units.
+        """
         desnormalized = {}
         for key, values in states.items():
             if state_params[key].get("type", "controlled_var") == "controlled_var":
@@ -114,6 +176,21 @@ class EvaluationEnvRunner:
         return desnormalized
 
     def _plot_results(self, result, variable):
+        """
+        Plot state, action, and reward time series for a single variable evaluation using Matplotlib.
+        
+        Generates a separate figure for each state in result["states"], each action in result["actions"], and a final figure for the rewards series. If a state corresponds to the evaluated variable and its configured type is "controlled_var", horizontal dashed lines are drawn for every setpoint value listed in self.config["state_params"][variable]["in_eval"].
+        
+        Parameters:
+            result (dict): Evaluation results with keys:
+                - "states": dict mapping state names to sequences of values.
+                - "actions": dict mapping action names to sequences of values.
+                - "rewards": sequence of reward values.
+            variable (str): Name of the variable under evaluation (used to decide setpoint overlays).
+        
+        Returns:
+            None
+        """
         state_history = result["states"]
         action_history = result["actions"]
         rewards = result["rewards"]
@@ -154,10 +231,44 @@ class EvaluationEnvRunner:
         plt.show()
 
     def _plot_results_ferm_independent(self, result, variable, show_reward=False, ma_window=4):
+        """
+        Create interactive Plotly visualizations for a single evaluation run and save a combined PNG of all plots.
+        
+        This method builds smoothed time-series traces for key process signals (temperatures "T" and "T_in", ethanol "cP", level "h") and control actions ("faq", "Fi", "Fe"), overlays setpoints, displays the figures, and exports them to a single stacked PNG file named "<variable>all_plots_together.png". Plots use a moving-average smoother, domain-specific post-processing for temperature signals, and layout settings tuned for the evaluation dashboard.
+        
+        Parameters:
+            result (dict): Evaluation output with keys:
+                - "states": dict of state-name -> list[float] (normalized or denormalized histories).
+                - "actions": dict of action-name -> list[float].
+                - "rewards": list[float] (not plotted by default).
+            variable (str): The evaluated state variable name (used to decide which setpoints to render and to apply special-case processing).
+            show_reward (bool): If true, include reward series in the displayed plots (not enabled by default).
+            ma_window (int): Window size for the moving-average smoothing applied to series before plotting.
+        
+        Side effects:
+            - Displays Plotly figures via fig.show().
+            - Writes a combined PNG image of all generated plots to disk as "<variable>all_plots_together.png".
+        
+        Notes:
+            - Expects self.config to contain "constants" with "max_steps", "state_params" entries with "in_eval" and setpoint info, and "graph_labels" for display names.
+            - Uses a local moving-average implementation (numpy.convolve). No exceptions are raised explicitly by this function.
+        """
         import plotly.graph_objs as go
         import numpy as np
 
         def moving_average(data, window_size):
+            """
+            Compute the simple moving average of a 1-D numeric sequence using a uniform window.
+            
+            Parameters:
+                data (array-like): 1-D sequence of numeric values.
+                window_size (int): Size of the moving window (positive integer).
+            
+            Returns:
+                numpy.ndarray: Array of moving averages of length max(0, len(data) - window_size + 1).
+                The computation uses a uniform window and no padding (NumPy's `mode='valid'`), so
+                values are only returned where the full window overlaps the input.
+            """
             return np.convolve(data, np.ones(window_size) / window_size, mode='valid')
 
         state_history = result["states"]
@@ -180,6 +291,20 @@ class EvaluationEnvRunner:
         plots = []
 
         def add_setpoints_to_trace(setpoints, name_="Setpoint", color='black'):
+            """
+            Create a Plotly dashed-line trace that represents piecewise-constant setpoints over time.
+            
+            The trace is built as repeated (x, y) pairs so the line holds each setpoint value for a block of time. Time starts at x=400; the first setpoint block has duration 100 and each subsequent block has duration 250.
+            
+            Parameters:
+                setpoints (Iterable[float]): Sequence of setpoint values to plot in order.
+                name_ (str): Trace name shown in the legend (default "Setpoint").
+                color (str): Line color for the trace (default 'black').
+            
+            Returns:
+                list: A single-element list containing a plotly.graph_objects.Scatter configured
+                as a dashed-line step trace (mode="lines") with the given name and color.
+            """
             x_vals = []
             y_vals = []
             start = 400

@@ -6,15 +6,24 @@ from stable_baselines3.common.callbacks import BaseCallback
 
 def generate_nn_topology(total_neurons, num_layers, distribution):
     """
-    Gera a topologia de uma rede neural com distribuição baseada em padrões comuns do DDPG.
+    Generate a list of neuron counts for each hidden layer given a total neuron budget and a distribution strategy.
     
-    Parâmetros:
-    - total_neurons: int, número total de neurônios disponíveis
-    - num_layers: int, número de camadas ocultas
-    - distribution: str, método de distribuição ('exponential','random', 'gaussian', 'balanced')
+    This function allocates `total_neurons` across `num_layers` according to `distribution`. Supported distributions:
+    - "exponential": exponential decay from first to last layer.
+    - "random": random integers within a range derived from the total and layer count.
+    - "gaussian": peak allocation near the middle layers following a Gaussian-like shape.
+    - "balanced": as even as possible, with any remainder added to the first layers.
     
-    Retorna:
-    - layers: list, quantidade de neurônios em cada camada
+    Parameters:
+        total_neurons (int): Total number of neurons to distribute across hidden layers.
+        num_layers (int): Number of hidden layers to produce.
+        distribution (str): One of "exponential", "random", "gaussian", or "balanced".
+    
+    Returns:
+        list[int]: Integer neuron counts for each hidden layer. The returned list sums to `total_neurons`.
+    
+    Raises:
+        ValueError: If `distribution` is not one of the supported options.
     """
 
     layer_indices = np.linspace(0, 1, num_layers)
@@ -42,6 +51,22 @@ def generate_nn_topology(total_neurons, num_layers, distribution):
 
 # Função recursiva para somar dicionários
 def sum_dicts(d1, d2, n_evals):
+    """
+    Recursively merge two dictionaries, aggregating overlapping numeric values.
+    
+    For each key in the union of d1 and d2:
+    - If both values are dictionaries, they are merged recursively.
+    - If both values are non-dictionaries, the result is d1[key] + d2[key] / n_evals.
+    - If a key exists in only one dictionary, that value is copied to the result.
+    
+    Parameters:
+        d1 (dict): First dictionary.
+        d2 (dict): Second dictionary.
+        n_evals (numeric): Divisor applied to values from d2 when keys overlap (d2 contribution is scaled by 1/n_evals).
+    
+    Returns:
+        dict: A new dictionary representing the merged/aggregated result.
+    """
     result = {}
     keys = set(d1) | set(d2)  # União das chaves
     for key in keys:
@@ -61,13 +86,24 @@ def sum_dicts(d1, d2, n_evals):
 
 def initialize_zeroed_metrics(config):
     """
-    Inicializa um dicionário com valores zerados para IAE e ações com base no config.
-
-    Args:
-        config (dict): Dicionário de configuração contendo `state_params` e `action_params`.
-
+    Initialize metrics containers with zeroed values based on a configuration.
+    
+    This builds:
+    - IAE_per_variable: a dict mapping state parameter names to 0 for parameters whose
+      "type" is "controlled_var" (if "type" is missing, "controlled_var" is assumed).
+    - IAE_total: 0
+    - sum_actions_dict: a dict mapping each action parameter name to 0
+    - sum_actions: 0
+    
+    Parameters:
+        config (dict): Configuration with keys:
+            - "state_params" (dict): mapping state names to parameter dicts; each parameter
+              dict may include a "type" key to indicate whether it is a "controlled_var".
+            - "action_params" (dict): mapping action names to their parameter dicts.
+    
     Returns:
-        dict: Dicionário inicializado com valores zerados.
+        dict: A dictionary with keys "IAE_per_variable", "IAE_total", "sum_actions_dict",
+        and "sum_actions" initialized to zero values.
     """
     # Estados controlados ('controlled_var')
     iae_per_variable = {
@@ -90,15 +126,35 @@ def initialize_zeroed_metrics(config):
 
 class TimeoutCallback(BaseCallback):
     def __init__(self, max_duration_seconds: float, verbose=0):
+        """
+        Initialize the TimeoutCallback.
+        
+        Parameters:
+            max_duration_seconds (float): Maximum allowed training duration in seconds before the callback requests a stop.
+            verbose (int, optional): Verbosity level forwarded to the BaseCallback constructor (default: 0).
+        
+        Behavior:
+            Stores the provided duration, initializes `start_time` to None (to be set when training starts) and `timed_out` to False. The `timed_out` flag is set to True when the timeout is reached.
+        """
         super().__init__(verbose)
         self.max_duration_seconds = max_duration_seconds
         self.start_time = None
         self.timed_out = False  # Flag para uso externo
 
     def _on_training_start(self) -> None:
+        """
+        Record the current wall-clock time on the callback instance.
+        
+        Sets self.start_time to the current time (seconds since the epoch) to mark when training began.
+        """
         self.start_time = time.time()
 
     def _on_step(self) -> bool:
+        """
+        Check whether training should continue based on elapsed time.
+        
+        If the elapsed time since training start exceeds max_duration_seconds, sets self.timed_out to True and (when verbose) prints a timeout message, then returns False to stop training. Otherwise returns True to continue.
+        """
         elapsed = time.time() - self.start_time
         if elapsed > self.max_duration_seconds:
             if self.verbose:
