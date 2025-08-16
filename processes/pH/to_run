@@ -1,0 +1,1 @@
+python main.py --opt rw_func --storage mysql://root:1997@localhost:3306/optuna_db01 --study_name 4t_rw_func_15_08 --n_trials 50 --n_workers 1 --n_evals 100 --n_agents 4
