@@ -10,7 +10,7 @@ from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.noise import NormalActionNoise
 
-from eval_render import eval_render
+from evaluation import eval_render
 from pre_env import ProcessSimulatorEnv
 from utils import TimeoutCallback
 from utils import sum_dicts, initialize_zeroed_metrics, generate_nn_topology
@@ -61,7 +61,7 @@ def define_model(config, key, render, n_evals, total_timesteps, id_):
     eval_callback = EvalCallback(
         env,
         best_model_save_path=best_model_path,
-        log_path=best_model_path + "/",
+        log_path=f"{best_model_path}/",
         eval_freq=int(total_timesteps / 20),
         n_eval_episodes=n_evals,
         verbose=1,
@@ -118,7 +118,7 @@ def objective(trial, config, run_type, n_evals, n_agents):
             else:
                 keys = keys + "_" + str(round(i["value"], 2))
     # Treinamento total e blocos
-    total_timesteps = 150000
+    total_timesteps = 500000
     steps_per_block = [
         int(total_timesteps / 4),
         int(total_timesteps / 4),

@@ -25,15 +25,15 @@ class ProcessSimulatorEnv(gym.Env):
         self.differential_equations = config["differential_equations"]
         self.algebraic_equations = config.get("algebraic_equations")
         self.verbose = config.get("verbose", False)
+        self.action_keys = list(self.action_params.keys())
+        self.state_keys = list(self.state_params.keys())
         self.action_space = spaces.Box(
-            low=-1, high=1, shape=(len(self.action_params),), dtype=np.float32
+            low=-1, high=1, shape=(len(self.action_keys),), dtype=np.float32
         )
         self.observation_space = spaces.Box(
-            low=-1, high=1, shape=(len(self.state_params),), dtype=np.float32
+            low=-1, high=1, shape=(len(self.state_keys),), dtype=np.float32
         )
-        self.adaptive_vars = {}
         self.last_max_action_norm = 0
-        self.reset()
 
     def reset(self, seed=None, options=None, fixed_values=None):
         self.time = 0.0
@@ -67,7 +67,7 @@ class ProcessSimulatorEnv(gym.Env):
 
         # State normalization
         for key, params in self.state_params.items():
-            if params.get("type") == "controlled_var":
+            if params.get("type", "controlled_var") == "controlled_var":
                 max_positive_error = params["max"] - self.setpoints[key]
                 max_negative_error = self.setpoints[key] - params["min"]
                 max_error = max(max(max_positive_error, max_negative_error),1e-6)
@@ -75,7 +75,7 @@ class ProcessSimulatorEnv(gym.Env):
                     self.state[key] - self.setpoints[key], -max_error, max_error
                 )
 
-            elif params.get("type") == "adaptive_var":
+            elif params.get("type", "controlled_var") == "adaptive_var":
                 if fixed_values and "adaptive_vars" in fixed_values and key in fixed_values["adaptive_vars"]:
                     value = fixed_values["adaptive_vars"][key]
                 else:
@@ -86,11 +86,11 @@ class ProcessSimulatorEnv(gym.Env):
         if self.verbose:
             self._print_status("Reset")
         # print(self.state, self.setpoints)
-        return np.array(list(self.state.values()), dtype=np.float32), {}
+        return np.array([self.state[k] for k in self.state_keys], dtype=np.float32), {}
 
     def step(self, action):
         action_increment = []
-        for i, key in enumerate(self.action_params):
+        for i, key in enumerate(self.action_keys):
             increment = action[i] * self.action_params[key]["increment"]
             action_increment.append(increment)
             self.actions[key] = np.clip(
@@ -108,6 +108,20 @@ class ProcessSimulatorEnv(gym.Env):
             args=(self.constants, self.actions, self.adaptive_vars),
             method=self.ode_solver,
         )
+        if not sol.success:
+            if self.verbose:
+                print(f"[solve_ivp] Integration failed: {sol.message}")
+            # Penalize and truncate
+            reward = -1e6
+            terminated = True
+            truncated = True
+            return (
+                np.array([self.state[k] for k in self.state_keys], dtype=np.float32),
+                reward,
+                terminated,
+                truncated,
+                {},
+            )
 
         for i, key in enumerate(self.initial_conditions):
             self.initial_conditions[key] = sol.y[i, -1]
@@ -158,7 +172,7 @@ class ProcessSimulatorEnv(gym.Env):
             self._print_status("Step")
 
         return (
-            np.array(list(self.state.values()), dtype=np.float32),
+            np.array([self.state[k] for k in self.state_keys], dtype=np.float32),
             reward,
             terminated, truncated,
             {},

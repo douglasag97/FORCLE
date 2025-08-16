@@ -25,8 +25,7 @@ class EvaluationEnvRunner:
             if "in_eval" in params:
                 print(f"\nRunning evaluation for variable: {var}")
                 results[var] = self._run_single_simulation(var, params["in_eval"])
-                # self._plot_results(results[var], var)
-                self._plot_results_ferm_independent(results[var], var, ma_window=4)
+                self._plot_results(results[var], var)
 
     def _run_single_simulation(self, variable, eval_values):
         model = DDPG.load(self.model_dir + "/best_model.zip")
@@ -66,6 +65,18 @@ class EvaluationEnvRunner:
                     env.setpoints[variable] = val
                 elif state_params[variable].get("type") == "adaptive_var":
                     env.adaptive_vars[variable] = val
+                    ###NÃO ESTOU MUDANDO NO STATE
+
+
+
+
+
+
+
+
+
+
+                    
                 obs = np.array(list(env.state.values()), dtype=np.float32)
             if i == 0:
                 max_steps_ = self.max_steps * 2

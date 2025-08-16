@@ -17,12 +17,18 @@ def generate_nn_topology(total_neurons, num_layers, distribution):
     - layers: list, quantidade de neurônios em cada camada
     """
 
+    if num_layers <= 0:
+        raise ValueError("num_layers must be >= 1")
+    if total_neurons < num_layers:
+        raise ValueError("total_neurons must be >= num_layers")
     layer_indices = np.linspace(0, 1, num_layers)
 
     if distribution == 'exponential':
         layers = (total_neurons * np.exp(-layer_indices) / np.sum(np.exp(-layer_indices))).astype(int)
     elif distribution == 'random':
-        layers = np.random.randint(total_neurons // (num_layers * 2), total_neurons // num_layers, num_layers)
+        low = max(1, total_neurons // (num_layers * 2))
+        high = max(low + 1, total_neurons // num_layers)
+        layers = np.random.randint(low, high, num_layers)
     elif distribution == 'gaussian':
         mean = num_layers / 2
         std_dev = num_layers / 4
