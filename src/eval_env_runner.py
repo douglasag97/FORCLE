@@ -52,7 +52,7 @@ class EvaluationEnvRunner:
             fixed_values["adaptive_vars"][variable] = eval_values[0]
 
         env = ProcessSimulatorEnv(self.config)
-
+        obs, info_ = env.reset(None, None, fixed_values=fixed_values)
         all_states = {key: [] for key in env.state}
         all_actions = {key: [] for key in env.actions}
         rewards = []
