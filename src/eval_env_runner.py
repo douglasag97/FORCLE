@@ -71,17 +71,20 @@ class EvaluationEnvRunner:
                 max_steps_ = self.max_steps * 2
             else:
                 max_steps_ = self.max_steps
+            inc = 0
             for _ in range(max_steps_):
                 action, _ = model.predict(obs, deterministic=True)
+                inc = inc + sum([abs(i) for i in action])
                 obs, reward, terminated, truncated, _ = env.step(action)
                 for key in all_states:
                     all_states[key].append(env.state[key])
                 for key in all_actions:
                     all_actions[key].append(env.actions[key])
                 rewards.append(reward)
+            print(inc/max_steps_)
 
         states_denorm = self._denormalize_states(all_states, state_params, variable, eval_values, max_steps_)
-        print(all_states,states_denorm)
+        #print(all_states,states_denorm)
         return {
             "states": states_denorm,
             "actions": all_actions,

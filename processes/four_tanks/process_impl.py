@@ -87,8 +87,8 @@ config = {
         "g": 9.81
     },
     "reset_params": {
-    "h1": [3, 10],  
-    "h2": [3, 10], 
+    "h1": [7,12],  
+    "h2": [7,12], 
     "h3": [7,12],       
     "h4": [7,12]
 },
@@ -147,19 +147,20 @@ config = {
     }
 },
     "reward_params": {
+        #trial 187 'params_A': 30.33584273261092, 'params_B': -0.10976952079, 'params_C': 9.657172728518, 'params_D': -0.86983535835394, 'params_Vmax': 5.0, 'params_a_ub': 0.949603103577221, 'params_h1': 2.5, 'params_h2': 2.5, 
         "weights": {
-            "h1": {"value":5 , "type": "float", "min": 1, "max": 5},
-            "h2": {"value":5 , "type": "float", "min": 1, "max": 5}
+            "h1": {"value":2.5 , "type": "float", "min": 1, "max": 5},
+            "h2": {"value":2.5 , "type": "float", "min": 1, "max": 5}
         },
         "logistic_params": {
-            "A": {"value": 50.0, "type": "float", "min": 0, "max": 100},
-            "B": {"value": -0.2, "type": "float", "min": -1, "max": 0},
-            "C": {"value": 5.0, "type": "float", "min": 0, "max": 100},
-            "D": {"value": -0.9, "type": "float", "min": -1, "max": 0}
+            "A": {"value": 30.336, "type": "float", "min": 0, "max": 100},
+            "B": {"value": -0.10977, "type": "float", "min": -1, "max": 0},
+            "C": {"value": 9.657, "type": "float", "min": 0, "max": 100},
+            "D": {"value": -0.8698, "type": "float", "min": -1, "max": 0}
         },
         "action_bonus_params": {
-            "a_ub": {"value": 1.0, "type": "float", "min": 0, "max": 1},
-            "Vmax": {"value": 0, "type": "float", "min": 0, "max": 30}
+            "a_ub": {"value": 0.9496, "type": "float", "min": 0, "max": 1},
+            "Vmax": {"value": 5, "type": "float", "min": 0, "max": 30}
         }
     },
     "nn_arch_params": {

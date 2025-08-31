@@ -108,7 +108,6 @@ class ProcessSimulatorEnv(gym.Env):
 
         # Reset adaptive vars, randomly between min max
         self._generate_adaptive_vars_state(fixed_values)
-
         # Reset setpoints for controlled variables
         self._generate_setpoints(fixed_values)
 
@@ -117,9 +116,7 @@ class ProcessSimulatorEnv(gym.Env):
 
         if self.algebraic_equations:
             self.raw_state = self.algebraic_equations(self.constants, self.actions, self.raw_state)
-
         self._normalize_raw_state()
-
         if self.verbose:
             self._print_status("Reset")
         return np.array([self.state[k] for k in self.state_keys], dtype=np.float32), {}
@@ -158,7 +155,6 @@ class ProcessSimulatorEnv(gym.Env):
                 truncated,
                 {},
             )
-
         for i, key in enumerate(self.vars_pvi):
             self.vars_pvi[key] = sol.y[i, -1]
             if key in self.state_keys:
