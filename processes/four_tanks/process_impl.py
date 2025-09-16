@@ -63,8 +63,9 @@ def reward_function(normalized_state_errors, action_increment, weights, logistic
     R1 = B + (A / (1 + np.exp(-(C * R0 + D))))
 
     a_ub, Vmax = action_bonus_params["a_ub"]['value'], action_bonus_params["Vmax"]['value']
+    Rmax = B + A/(1+np.exp(-(C+D)))
     action_ratio = min(abs(action_increment) / a_ub, 1)
-    V = Vmax * (1 - action_ratio)
+    V = Vmax * Rmax * (1 - action_ratio)
     return R1 + V
 
 
@@ -149,37 +150,37 @@ config = {
     "reward_params": {
         #trial 187 'params_A': 30.33584273261092, 'params_B': -0.10976952079, 'params_C': 9.657172728518, 'params_D': -0.86983535835394, 'params_Vmax': 5.0, 'params_a_ub': 0.949603103577221, 'params_h1': 2.5, 'params_h2': 2.5, 
         "weights": {
-            "h1": {"value":2.5 , "type": "float", "min": 1, "max": 5},
-            "h2": {"value":2.5 , "type": "float", "min": 1, "max": 5}
+            "h1": {"value":2.280410 , "type": "float", "min": 1, "max": 5},
+            "h2": {"value":2.777904 , "type": "float", "min": 1, "max": 5}
         },
         "logistic_params": {
-            "A": {"value": 30.336, "type": "float", "min": 0, "max": 100},
-            "B": {"value": -0.10977, "type": "float", "min": -1, "max": 0},
-            "C": {"value": 9.657, "type": "float", "min": 0, "max": 100},
-            "D": {"value": -0.8698, "type": "float", "min": -1, "max": 0}
+            "A": {"value": 52.817267, "type": "float", "min": 0, "max": 100},
+            "B": {"value": -0.158965	, "type": "float", "min": -1, "max": 0},
+            "C": {"value": 73.812111, "type": "float", "min": 0, "max": 100},
+            "D": {"value": -0.837569	, "type": "float", "min": -1, "max": 0}
         },
         "action_bonus_params": {
-            "a_ub": {"value": 0.9496, "type": "float", "min": 0, "max": 1},
-            "Vmax": {"value": 5, "type": "float", "min": 0, "max": 30}
+            "a_ub": {"value": 0.163422, "type": "float", "min": 0, "max": 1},
+            "Vmax": {"value": 0.5	, "type": "float", "min": 0.1, "max": 3}
         }
     },
     "nn_arch_params": {
         "topology": {
             "la": {"value": 1, "type": "int", "min": 1, "max": 5},
-            "na": {"value": 48, "type": "int", "min": 16, "max": 512},
+            "na": {"value": 142, "type": "int", "min": 16, "max": 512},
             "dista": {"value": "balanced", "type": "categorical", "categories": ['exponential', 'gaussian', 'balanced']},
-            "lc": {"value": 1, "type": "int", "min": 1, "max": 5},
-            "nc": {"value": 48, "type": "int", "min": 16, "max": 512},
+            "lc": {"value": 5, "type": "int", "min": 1, "max": 5},
+            "nc": {"value": 472, "type": "int", "min": 16, "max": 512},
             "distc": {"value": "balanced", "type": "categorical", "categories": ['exponential', 'gaussian', 'balanced']}
         }
     },
     "ddpg_params": {
         "base": {
             "gamma": {"value": 0.91, "type": "float", "min": 0.5, "max": 1},
-            "lr": {"value": 1e-3, "type": "log", "min": 3e-5, "max": 3e-2}
+            "lr": {"value":0.002, "type": "log", "min": 3e-5, "max": 3e-2}
         },
         "sample_data": {
-            "batch_size": {"value": 400, "type": "int", "min": 64, "max": 1024},
+            "batch_size": {"value": 282, "type": "int", "min": 64, "max": 1024},
             "buffer_size": {"value": 100000, "type": "int", "min": 15000, "max": 1000000}
         },
         "updates": {

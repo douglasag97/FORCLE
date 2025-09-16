@@ -175,10 +175,10 @@ def objective(trial, config, run_type, n_evals, n_agents):
         trial.set_user_attr("IAE_" + str(block), np.mean(IAEs))
         trial.set_user_attr("best_mean_reward_" + str(block), np.mean(rws))
     trial.set_user_attr("IAE", np.mean(IAEs))
-    trial.set_user_attr("sumA", np.mean([i/3 for i in sumAs]))
+    trial.set_user_attr("sumA", np.mean(sumAs))
     trial.set_user_attr("best_mean_reward", np.mean(rws))
 
-    return np.mean(IAEs)+np.mean([i/3 for i in sumAs]) if run_type == "reward_params" else np.mean(rws)
+    return np.mean(IAEs)+np.mean(sumAs) if run_type == "reward_params" else np.mean(rws)
 
 
 
