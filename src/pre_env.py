@@ -40,7 +40,7 @@ class ProcessSimulatorEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-1, high=1, shape=(len(self.state_keys),), dtype=np.float32
         )
-        self.last_max_action_norm = 0
+        self.last_avg_action = 0
 
     def _generate_adaptive_vars_state(self, fixed_values):
         for key in self.adaptive_vars_keys:
@@ -132,7 +132,7 @@ class ProcessSimulatorEnv(gym.Env):
                 self.action_params[key]["max"]
             )
 
-        self.last_max_action_norm = max(abs(inc) for inc in action)
+        self.last_avg_action = sum([abs(inc) for inc in action])/len(action)
 
         sol = solve_ivp(
             self._differential_equations_wrapper,
@@ -175,7 +175,7 @@ class ProcessSimulatorEnv(gym.Env):
 
         reward = self.reward_function(
             normalized_state_errors,
-            self.last_max_action_norm,
+            self.last_avg_action,
             self.reward_params["weights"],
             self.reward_params["logistic_params"],
             self.reward_params["action_bonus_params"]

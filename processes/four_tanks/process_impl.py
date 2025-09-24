@@ -43,7 +43,7 @@ def algebraic_equations(constants, actions, raw_state):
     return raw_state
 
 
-def reward_function(normalized_state_errors, action_increment, weights, logistic_params, action_bonus_params):
+def reward_function(normalized_state_errors, last_avg_action, weights, logistic_params, action_bonus_params):
     """
     Calcula a recompensa com base nos erros normalizados, parâmetros logísticos e esforço de controle.
     """
@@ -62,10 +62,9 @@ def reward_function(normalized_state_errors, action_increment, weights, logistic
     D = D * C
     R1 = B + (A / (1 + np.exp(-(C * R0 + D))))
 
-    a_ub, Vmax = action_bonus_params["a_ub"]['value'], action_bonus_params["Vmax"]['value']
+    Vmax = action_bonus_params["Vmax"]['value']
     Rmax = B + A/(1+np.exp(-(C+D)))
-    action_ratio = min(abs(action_increment) / a_ub, 1)
-    V = Vmax * Rmax * (1 - action_ratio)
+    V = Vmax * Rmax * (1 - last_avg_action)
     return R1 + V
 
 
@@ -150,18 +149,17 @@ config = {
     "reward_params": {
         #trial 187 'params_A': 30.33584273261092, 'params_B': -0.10976952079, 'params_C': 9.657172728518, 'params_D': -0.86983535835394, 'params_Vmax': 5.0, 'params_a_ub': 0.949603103577221, 'params_h1': 2.5, 'params_h2': 2.5, 
         "weights": {
-            "h1": {"value":2.280410 , "type": "float", "min": 1, "max": 5},
-            "h2": {"value":2.777904 , "type": "float", "min": 1, "max": 5}
+            "h1": {"value":4.666341 , "type": "float", "min": 1, "max": 5},
+            "h2": {"value":4.183536 , "type": "float", "min": 1, "max": 5}
         },
         "logistic_params": {
-            "A": {"value": 52.817267, "type": "float", "min": 0, "max": 100},
-            "B": {"value": -0.158965	, "type": "float", "min": -1, "max": 0},
-            "C": {"value": 73.812111, "type": "float", "min": 0, "max": 100},
-            "D": {"value": -0.837569	, "type": "float", "min": -1, "max": 0}
+            "A": {"value": 5.857317, "type": "float", "min": 0, "max": 100},
+            "B": {"value": -0.201633	, "type": "float", "min": -1, "max": 0},
+            "C": {"value": 19.259704, "type": "float", "min": 0, "max": 100},
+            "D": {"value": -0.822066	, "type": "float", "min": -1, "max": 0}
         },
         "action_bonus_params": {
-            "a_ub": {"value": 0.163422, "type": "float", "min": 0, "max": 1},
-            "Vmax": {"value": 0.5	, "type": "float", "min": 0.1, "max": 3}
+            "Vmax": {"value": 0.777113	, "type": "float", "min": 0.1, "max": 3}
         }
     },
     "nn_arch_params": {
