@@ -149,44 +149,44 @@ config = {
     "reward_params": {
         #trial 187 'params_A': 30.33584273261092, 'params_B': -0.10976952079, 'params_C': 9.657172728518, 'params_D': -0.86983535835394, 'params_Vmax': 5.0, 'params_a_ub': 0.949603103577221, 'params_h1': 2.5, 'params_h2': 2.5, 
         "weights": {
-            "h1": {"value":4.666341 , "type": "float", "min": 1, "max": 5},
-            "h2": {"value":4.183536 , "type": "float", "min": 1, "max": 5}
+            "h1": {"value":2.302885 , "type": "float", "min": 1, "max": 5},
+            "h2": {"value":2.302885 , "type": "float", "min": 1, "max": 5}
         },
         "logistic_params": {
-            "A": {"value": 5.857317, "type": "float", "min": 0, "max": 100},
-            "B": {"value": -0.201633	, "type": "float", "min": -1, "max": 0},
-            "C": {"value": 19.259704, "type": "float", "min": 0, "max": 100},
-            "D": {"value": -0.822066	, "type": "float", "min": -1, "max": 0}
+            "A": {"value": 9.98618, "type": "float", "min": 0, "max": 100},
+            "B": {"value": -0.517795	, "type": "float", "min": -1, "max": 0},
+            "C": {"value": 2.574325	, "type": "float", "min": 0, "max": 100},
+            "D": {"value": -0.677000, "type": "float", "min": -1, "max": 0}
         },
         "action_bonus_params": {
-            "Vmax": {"value": 0.777113	, "type": "float", "min": 0.1, "max": 3}
+            "Vmax": {"value": 0.227	, "type": "float", "min": 0.1, "max": 3}
         }
     },
     "nn_arch_params": {
         "topology": {
-            "la": {"value": 1, "type": "int", "min": 1, "max": 5},
-            "na": {"value": 142, "type": "int", "min": 16, "max": 512},
-            "dista": {"value": "balanced", "type": "categorical", "categories": ['exponential', 'gaussian', 'balanced']},
+            "la": {"value": 3, "type": "int", "min": 1, "max": 5},
+            "na": {"value": 98, "type": "int", "min": 16, "max": 512},
+            "dista": {"value": "exponential", "type": "categorical", "categories": ['exponential', 'gaussian', 'balanced']},
             "lc": {"value": 5, "type": "int", "min": 1, "max": 5},
-            "nc": {"value": 472, "type": "int", "min": 16, "max": 512},
-            "distc": {"value": "balanced", "type": "categorical", "categories": ['exponential', 'gaussian', 'balanced']}
+            "nc": {"value": 83, "type": "int", "min": 16, "max": 512},
+            "distc": {"value": "gaussian", "type": "categorical", "categories": ['exponential', 'gaussian', 'balanced']}
         }
     },
     "ddpg_params": {
         "base": {
-            "gamma": {"value": 0.91, "type": "float", "min": 0.5, "max": 1},
-            "lr": {"value":0.002, "type": "log", "min": 3e-5, "max": 3e-2}
+            "gamma": {"value": 0.8513745215589491, "type": "float", "min": 0.5, "max": 1},
+            "lr": {"value":0.0017837, "type": "log", "min": 3e-5, "max": 3e-2}
         },
         "sample_data": {
-            "batch_size": {"value": 282, "type": "int", "min": 64, "max": 1024},
-            "buffer_size": {"value": 100000, "type": "int", "min": 15000, "max": 1000000}
+            "batch_size": {"value": 476, "type": "int", "min": 64, "max": 1024},
+            "buffer_size": {"value": 568439, "type": "int", "min": 15000, "max": 1000000}
         },
         "updates": {
-            "tau": {"value": 0.005, "type": "log", "min": 0.0001, "max": 0.7},
-            "gradient_steps": {"value": 0.4, "type": "float", "min": 0, "max": 1}
+            "tau": {"value": 0.0007145493, "type": "log", "min": 0.0001, "max": 0.7},
+            "gradient_steps": {"value": 0.435273935558231, "type": "float", "min": 0, "max": 1}
         },
         "exploration": {
-            "normal_noise": {"value": 0.3, "type": "float", "min": 0, "max": 1}
+            "normal_noise": {"value": 0.072055811271931, "type": "float", "min": 0, "max": 1}
         }
     },
     "reward_function": reward_function,

@@ -24,9 +24,6 @@ def define_model(config, key, render, n_evals, total_timesteps, id_):
     os.makedirs(best_model_path, exist_ok=True)
 
     env = Monitor(ProcessSimulatorEnv(config), filename=f"{best_model_path}/train_monitor.csv")
-    sigma_std = config["ddpg_params"]["exploration"]["normal_noise"]["value"]
-    action_dim = env.action_space.shape[0]
-    action_noise = NormalActionNoise(mean=np.zeros(action_dim), sigma=sigma_std * np.ones(action_dim))
     batch_size = config["ddpg_params"]["sample_data"]["batch_size"]["value"]
     ep_length = config["constants"]["max_steps"]
     lr_start = config["ddpg_params"]["base"]["lr"]["value"]
@@ -40,7 +37,6 @@ def define_model(config, key, render, n_evals, total_timesteps, id_):
         tau=config["ddpg_params"]["updates"]["tau"]["value"],
         gamma=config["ddpg_params"]["base"]["gamma"]["value"],
         train_freq=(max(int(batch_size / (ep_length * 0.8)), 1), "episode"),
-        action_noise=action_noise,
         verbose=0,
         gradient_steps=int(batch_size * config["ddpg_params"]["updates"]["gradient_steps"]["value"]) + 1,
         policy_kwargs={
@@ -122,7 +118,8 @@ def objective(trial, config, run_type, n_evals, n_agents):
     steps_per_block = [
         int(total_timesteps / 4),
         int(total_timesteps / 4),
-        int(total_timesteps / 2)
+        int(total_timesteps / 4),
+        int(total_timesteps / 4)
     ]
     models = []
     callbacks = []
@@ -131,6 +128,7 @@ def objective(trial, config, run_type, n_evals, n_agents):
                                                    trial.number)
         models.append(model)
         callbacks.append(eval_callback)
+    action_dim = env.action_space.shape[0]
 
     for block in range(len(steps_per_block)):
         IAEs = []
@@ -138,6 +136,9 @@ def objective(trial, config, run_type, n_evals, n_agents):
         rws = []
         for k in range(n_agents):
             start = time.perf_counter()
+            sigma_std = config["ddpg_params"]["exploration"]["normal_noise"]["value"] / (block+1)
+            print(sigma_std)
+            models[k].action_noise = NormalActionNoise(mean=np.zeros(action_dim), sigma=sigma_std * np.ones(action_dim))
             [best_mean_reward, IAE, sumA, updated_model, updated_callback] = evaluate_params(models[k],
                                                                                              callbacks[k],
                                                                                              timesteps=steps_per_block[
